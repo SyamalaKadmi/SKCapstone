@@ -1,35 +1,89 @@
 pipeline {
-    agent any
-    environment {
-        TF_VAR_region = 'us-east-1'
-        AWS_REGION = 'us-east-1'
+  agent any
+  
+	environment {
+        AWS_REGION = "us-east-1"
+        ECR_HELLO_REPO = "<aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/helloservice"
+        ECR_PROFILE_REPO = "<aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/profileservice"
+		ECR_FRONTEND_REPO = "<aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/frontend"
     }
-    stages {
-        stage('Clone Repo') {
-            steps {
-                git 'https://github.com/SyamalaKadmi/SampleMERNwithMicroservices.git'
-            }
+  
+  stages {
+    stage('Clone Repo') {
+		steps {
+			git 'https://github.com/SyamalaKadmi/SampleMERNwithMicroservices.git'
         }
-        stage('Init Terraform') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform init'
-                }
-            }
-        }
-        stage('Plan Terraform') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform plan -out=tfplan'
-                }
-            }
-        }
-        stage('Apply Terraform') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform apply -auto-approve tfplan'
-                }
+    }
+    stage('Init Terraform') {
+        steps {
+            dir('terraform') {
+                sh 'terraform init'
             }
         }
     }
+    stage('Plan Terraform') {
+        steps {
+            dir('terraform') {
+                sh 'terraform plan -out=tfplan'
+            }
+        }
+    }
+    stage('Apply Terraform') {
+        steps {
+            dir('terraform') {
+				sh 'terraform apply -auto-approve tfplan'
+            }
+        }
+    }
+    stage('Ansible') {
+      steps {
+        dir('ansible') {
+            sh 'ansible-playbook -i inventory.ini playbook.yml'
+        }
+      }
+    }
+    stage('Build & Push Docker Image') {
+      steps {
+                script {
+                    sh """
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ECR_HELLO_REPO}
+                        docker build -t helloservice ./services/helloservice
+                        docker tag helloservice:latest ${ECR_HELLO_REPO}:latest
+                        docker push ${ECR_HELLO_REPO}:latest
+                        
+                        docker build -t profileservice ./services/profileservice
+                        docker tag profileservice:latest ${ECR_PROFILE_REPO}:latest
+                        docker push ${ECR_PROFILE_REPO}:latest
+						
+						docker build -t frontend ./services/frontend
+                        docker tag frontend:latest ${ECR_FRONTEND_REPO}:latest
+                        docker push ${ECR_FRONTEND_REPO}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    sh """
+                        aws eks update-kubeconfig --region $AWS_REGION --name SkMERNCluster
+                        kubectl apply -f ./k8s/
+                    """
+                }
+            }
+        }
+    stage('Run Tests') {
+      steps {
+        sh 'npm test'
+      }
+    }
+  }
+  post {
+    failure {
+      mail to: 'syamala.kadimi@gmail.com',
+           subject: "Pipeline Failed!",
+           body: "The Jenkins pipeline has failed. Please check."
+    }
+  }
 }

@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = "us-east-1"
+        ECR_HELLO_REPO = "<aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/helloservice"
+        ECR_PROFILE_REPO = "<aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/profileservice"
+		ECR_FRONTEND_REPO = "<aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/frontend"
+    }
+
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git 'https://github.com/SyamalaKadmi/SampleMERNwithMicroservices.git'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    sh """
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ECR_HELLO_REPO}
+                        docker build -t helloservice ./services/helloservice
+                        docker tag helloservice:latest ${ECR_HELLO_REPO}:latest
+                        docker push ${ECR_HELLO_REPO}:latest
+                        
+                        docker build -t profileservice ./services/profileservice
+                        docker tag profileservice:latest ${ECR_PROFILE_REPO}:latest
+                        docker push ${ECR_PROFILE_REPO}:latest
+						
+						docker build -t frontend ./services/frontend
+                        docker tag frontend:latest ${ECR_FRONTEND_REPO}:latest
+                        docker push ${ECR_FRONTEND_REPO}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                script {
+                    sh """
+                        aws eks update-kubeconfig --region $AWS_REGION --name SkMERNCluster
+                        kubectl apply -f ./k8s/
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment Successful!"
+        }
+        failure {
+            echo "❌ Deployment Failed!"
+        }
+    }
+}

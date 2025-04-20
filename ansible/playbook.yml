@@ -1,0 +1,7 @@
+---
+- name: Configure EC2 Instances for Dockerized Deployment
+  hosts: web
+  become: true
+
+  roles:
+    - setup

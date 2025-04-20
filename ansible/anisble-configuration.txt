@@ -1,0 +1,19 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git 'https://github.com/SyamalaKadmi/SampleMERNwithMicroservices.git'
+            }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                dir('ansible') {
+                    sh 'ansible-playbook -i inventory.ini playbook.yml'
+                }
+            }
+        }
+    }
+}

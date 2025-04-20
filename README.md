@@ -56,9 +56,9 @@
         aws configure
     ```
 7. Create docker files for frontend and backend (helloService & profileService) respectively
-    - helloservice [HelloServiceDockerfile](backend/helloService/Dockerfile)
-    - profileservice [profileServiceDockerfile](backend/profileService/Dockerfile)
-    - frontendservice [frontendDockerfile](frontend/Dockerfile)
+    - helloservice [HelloServiceDockerfile](SampleMERNWithMicroservices/backend/helloService/Dockerfile)
+    - profileservice [profileServiceDockerfile](SampleMERNWithMicroservices/backend/profileService/Dockerfile)
+    - frontendservice [frontendDockerfile](SampleMERNWithMicroservices/frontend/Dockerfile)
 8. Build the docker images
     ```bash
     cd ./SampleMERNwithMicroservices
@@ -73,7 +73,6 @@
             aws ecr create-repository --repository-name mern-backend-helloservice-repo
             aws ecr create-repository --repository-name mern-backend-profileservice-repo
         ```
-        ![ecrRepoCreation](Images/ecrCreation.png)
     2. Authenticate Docker to ECR
         ```bash
             aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<region>.amazonaws.com
@@ -155,8 +154,8 @@
    ```
    1. [vpc.tf](terraform/vpc.tf) 
    2. [eks.tf](tScripts/Terraform/eks.tf) 
-   4. [iam.tf](Scripts/Terraform/variables.tf)
-   5. [security.tf](terraform/outputs.tf) 
+   4. [variables.tf](Scripts/Terraform/variables.tf)
+   5. [outputs.tf](terraform/outputs.tf) 
    6. [backend.tf](Scripts/Terraform/backend.tf)
       - Important: Create an S3 bucket manually before running Terraform:
       ```
